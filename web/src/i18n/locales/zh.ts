@@ -74,6 +74,11 @@ const zh = {
       frameDetect: '帧差检测',
       frameDetectTip: '计算帧之间的差异，当检测到远程主机画面不变时，停止传输视频流',
       resetHdmi: '重置 HDMI',
+      mixedH264: {
+        title: 'H.264 视频流冲突',
+        description:
+          '检测到 H.264 Direct 和 H.264 WebRTC 同时使用，可能导致画面撕裂或花屏。请只保留一种 H.264 模式。'
+      },
       captureStatus: {
         hdmiError: 'HDMI 画面异常',
         unsupportedResolution: '当前分辨率不支持',
@@ -241,8 +246,16 @@ const zh = {
       ok: '确定',
       disabled: '/data 是只读分区，无法下载镜像',
       uploadbox: '将文件拖放到此处或单击选择',
-      inputfile: '请输入图片文件',
-      NoISO: '无 ISO'
+      inputfile: '请输入镜像文件',
+      NoISO: '无 ISO',
+      sha256: 'SHA-256（可选）',
+      sha256Placeholder: '请输入 64 位 SHA-256 校验和',
+      invalidSHA256: 'SHA-256 必须是 64 位十六进制字符串',
+      failed: '下载失败',
+      success: '下载成功',
+      checksumFailed: '下载失败：SHA-256 校验失败',
+      cancel: '取消',
+      cancelFailed: '取消下载失败'
     },
     power: {
       title: '电源',
@@ -259,6 +272,23 @@ const zh = {
     },
     settings: {
       title: '设置',
+      mcp: {
+        title: 'MCP 服务',
+        service: '远程控制 MCP',
+        serviceDesc: '允许可信的 MCP 客户端控制键盘、鼠标并获取屏幕截图',
+        securityWarning:
+          '任何持有此 API key 的人都可以控制远程主机并查看屏幕，请使用 HTTPS，并仅在可信网络中启用。',
+        endpoint: '服务地址',
+        apiKey: 'API Key',
+        regenerateConfirmTitle: '重新生成 MCP API key？',
+        regenerateConfirmDesc: '当前 key 将立即失效。',
+        enableConfirmTitle: '启用外部 MCP 控制？',
+        enableConfirmDesc: '启用 MCP 将停止 PicoClaw，并关闭当前活动的 PicoClaw 会话。',
+        failed: 'MCP 操作失败',
+        copyFailed: '复制失败，请手动复制。',
+        okBtn: '确认',
+        cancelBtn: '取消'
+      },
       about: {
         title: '关于 NanoKVM',
         information: '信息',
@@ -334,7 +364,10 @@ const zh = {
           tip: '如果您未使用此功能，建议将其关闭'
         },
         hdmi: {
-          description: '启用 HDMI/显示器 输出功能'
+          description: '启用 HDMI/显示器 输出功能',
+          idleTimeoutTitle: '无观看者自动停止采集',
+          idleTimeoutDescription: '没有活跃观看者后停止 HDMI 采集，0 表示永不停止',
+          minutes: '分钟'
         },
         autostart: {
           title: '自动启动脚本设置',
@@ -655,19 +688,28 @@ const zh = {
         runtimeStarted: 'PicoClaw 运行时已启动',
         runtimeStartFailed: '启动 PicoClaw 运行时失败',
         runtimeStopped: 'PicoClaw 运行时已停止',
-        runtimeStopFailed: '停止 PicoClaw 运行时失败'
+        runtimeStopFailed: '停止 PicoClaw 运行时失败',
+        controlSwitchedToMCP: '控制权已切换到外部 MCP 服务'
       },
       connection: {
         runtime: {
           checking: '检查中',
+          restoring: '正在恢复 PicoClaw',
           ready: '运行时已就绪',
           stopped: '运行时未启动',
+          blockedByMCP: '外部 MCP 控制已启用',
+          readyBlockedByMCP: '运行时正在运行，但外部 MCP 当前控制设备输入。',
+          readyWithoutControl: '运行时正在运行，请先授予 PicoClaw 设备控制权后再重新连接。',
           unavailable: '运行时不可用',
           configError: '配置错误'
         },
         transport: {
           connecting: '连接中',
-          connected: '已连接'
+          connected: '已连接',
+          disconnected: '未连接',
+          reconnect: '重新连接',
+          reconnectDescription: '重新连接到正在运行的 PicoClaw 会话。',
+          reconnectBlocked: 'PicoClaw 需要先获得设备控制权才能重新连接。'
         },
         run: {
           idle: '空闲',
@@ -681,6 +723,28 @@ const zh = {
       },
       overlay: {
         locked: 'PicoClaw 正在控制设备，手动输入已暂停。'
+      },
+      control: {
+        picoclaw: '设备控制：PicoClaw',
+        picoclawDescription: 'PicoClaw 可以写入键鼠，手动输入可能会被暂停。',
+        mcp: '设备控制：外部 MCP',
+        mcpDescription: '外部 MCP 可以写入设备，PicoClaw 不会接管键鼠。',
+        off: '设备控制：手动/无 AI',
+        offDescription: 'AI 不会写入键鼠，手动控制保持可用。',
+        transitioning: '设备控制：正在切换',
+        transitioningDescription: '正在同步设备控制权，请稍候。',
+        grant: '接管设备',
+        release: '交还控制',
+        releasing: '正在释放...',
+        switching: '正在切换...',
+        releasingLabel: '设备控制：正在释放',
+        releasingDescription: '正在交还设备控制，PicoClaw 已停止当前写入。',
+        granted: '已授予 PicoClaw 控制权',
+        released: '已交还设备控制权',
+        grantFailed: '授予 PicoClaw 控制权失败',
+        releaseFailed: '释放 PicoClaw 控制权失败',
+        grantConfirmTitle: '将设备控制切换到 PicoClaw？',
+        grantConfirmDesc: '外部 MCP 的设备写入将被中断。'
       },
       install: {
         install: '安装 PicoClaw',
@@ -741,15 +805,22 @@ const zh = {
         deleteConfirmOk: '删除',
         deleteConfirmCancel: '取消',
         messageCount_one: '{{count}} 条消息',
-        messageCount_other: '{{count}} 条消息'
+        messageCount_other: '{{count}} 条消息',
+        messageCount: '{{count}} 条消息'
       },
       config: {
         startRuntime: '启动 PicoClaw',
         stopRuntime: '停止 PicoClaw'
       },
       start: {
+        enableConfirmTitle: '切换为 PicoClaw 控制？',
+        enableConfirmDesc: '启动 PicoClaw 前会中断外部 MCP 的设备写入。',
+        enableConfirmOk: '启动 PicoClaw',
+        enableConfirmCancel: '取消',
         title: '启动 PicoClaw',
-        description: '启动运行时后即可开始使用 PicoClaw 助手。'
+        description: '启动运行时后即可开始使用 PicoClaw 助手。',
+        switchFromMCP: '切换到 PicoClaw 并启动',
+        takeoverAndStart: '接管并启动'
       }
     },
     error: {

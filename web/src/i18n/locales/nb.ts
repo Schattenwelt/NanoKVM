@@ -79,6 +79,11 @@ const nb = {
       frameDetectTip:
         'Kalkuler forskjellen mellom bilder. Stopper overføring av video når det ikke oppdages forskjell på den eksterne vertens skjerm.',
       resetHdmi: 'Tilbakestill HDMI',
+      mixedH264: {
+        title: 'H.264-strømmekonflikt',
+        description:
+          'H.264 Direct og H.264 WebRTC brukes samtidig. Dette kan føre til skjermriving eller ødelagt video. Bruk bare én H.264-modus.'
+      },
       captureStatus: {
         hdmiError: 'HDMI-skjermfeil',
         unsupportedResolution: 'Gjeldende oppløsning støttes ikke',
@@ -252,7 +257,15 @@ const nb = {
       disabled: '/data partisjonen er RO, så vi kan ikke laste ned bildet',
       uploadbox: 'Slipp filen her eller klikk for å velge',
       inputfile: 'Vennligst skriv inn bildefilen',
-      NoISO: 'Ingen ISO'
+      NoISO: 'Ingen ISO',
+      sha256: 'SHA-256 (valgfritt)',
+      sha256Placeholder: 'Skriv inn en SHA-256-kontrollsum på 64 tegn',
+      invalidSHA256: 'SHA-256 må være en heksadesimal streng på 64 tegn',
+      failed: 'Nedlasting mislyktes',
+      success: 'Nedlasting fullført',
+      checksumFailed: 'Nedlasting mislyktes: SHA-256-verifisering mislyktes',
+      cancel: 'Avbryt',
+      cancelFailed: 'Kunne ikke avbryte nedlastingen'
     },
     power: {
       title: 'På-knapp',
@@ -269,6 +282,24 @@ const nb = {
     },
     settings: {
       title: 'Innstillinger',
+      mcp: {
+        title: 'MCP-tjeneste',
+        service: 'MCP-fjernstyring',
+        serviceDesc: 'La klarerte MCP-klienter styre tastatur og mus og ta skjermbilder',
+        securityWarning:
+          'Alle med denne API-nøkkelen kan styre den eksterne verten og se skjermen. Bruk HTTPS, og aktiver tjenesten bare på klarerte nettverk.',
+        endpoint: 'Endepunkt',
+        apiKey: 'API-nøkkel',
+        regenerateConfirmTitle: 'Generere MCP API-nøkkelen på nytt?',
+        regenerateConfirmDesc: 'Den gjeldende nøkkelen slutter å virke umiddelbart.',
+        enableConfirmTitle: 'Aktivere ekstern MCP-styring?',
+        enableConfirmDesc:
+          'Aktivering av MCP stopper PicoClaw og lukker alle aktive PicoClaw-økter.',
+        failed: 'MCP-operasjonen mislyktes',
+        copyFailed: 'Kopiering mislyktes. Kopier manuelt.',
+        okBtn: 'Bekreft',
+        cancelBtn: 'Avbryt'
+      },
       about: {
         title: 'Om NanoKVM',
         information: 'Informasjon',
@@ -344,7 +375,10 @@ const nb = {
           tip: 'Slå den av hvis den ikke er nødvendig'
         },
         hdmi: {
-          description: 'Aktiver HDMI/skjermutgang'
+          description: 'Aktiver HDMI/skjermutgang',
+          idleTimeoutTitle: 'Tidsavbrudd for inaktivt opptak',
+          idleTimeoutDescription: 'Stopp HDMI-opptak etter at det ikke har vært aktive seere i',
+          minutes: 'min'
         },
         autostart: {
           title: 'Autostart skriptinnstillinger',
@@ -667,19 +701,28 @@ const nb = {
         runtimeStarted: 'PicoClaw runtime startet',
         runtimeStartFailed: 'Kunne ikke starte PicoClaw runtime',
         runtimeStopped: 'PicoClaw runtime stoppet',
-        runtimeStopFailed: 'Kunne ikke stoppe PicoClaw runtime'
+        runtimeStopFailed: 'Kunne ikke stoppe PicoClaw runtime',
+        controlSwitchedToMCP: 'Styringen er byttet til den eksterne MCP-tjenesten'
       },
       connection: {
         runtime: {
           checking: 'Kontrollerer',
+          restoring: 'Restoring PicoClaw',
           ready: 'Runtime klar',
           stopped: 'Runtime stoppet',
+          blockedByMCP: 'Ekstern MCP-styring er aktiv',
+          readyBlockedByMCP: 'The runtime is running, but external MCP currently controls device input.',
+          readyWithoutControl: 'The runtime is running. Grant PicoClaw device control before reconnecting.',
           unavailable: 'Runtime utilgjengelig',
           configError: 'Konfigurasjonsfeil'
         },
         transport: {
           connecting: 'Kobler til',
-          connected: 'Tilkoblet'
+          connected: 'Tilkoblet',
+          disconnected: 'Disconnected',
+          reconnect: 'Reconnect',
+          reconnectDescription: 'Reconnect to the running PicoClaw session.',
+          reconnectBlocked: 'PicoClaw needs device control before reconnecting.'
         },
         run: {
           idle: 'Inaktiv',
@@ -693,6 +736,28 @@ const nb = {
       },
       overlay: {
         locked: 'PicoClaw kontrollerer enheten. Manuell inntasting er satt på pause.'
+      },
+      control: {
+        picoclaw: 'Enhetsstyring: PicoClaw',
+        picoclawDescription: 'PicoClaw can write keyboard and mouse input. Manual input may pause.',
+        mcp: 'Enhetsstyring: ekstern MCP',
+        mcpDescription: 'External MCP can write to the device. PicoClaw will not take over input.',
+        off: 'Enhetsstyring: av',
+        offDescription: 'AI will not write keyboard or mouse input. Manual control remains available.',
+        transitioning: 'Device control: switching',
+        transitioningDescription: 'Device control is syncing. Please wait.',
+        grant: 'Gi styring',
+        release: 'Frigi',
+        releasing: 'Releasing...',
+        switching: 'Switching...',
+        releasingLabel: 'Device control: releasing',
+        releasingDescription: 'Device control is being returned. PicoClaw has stopped current writes.',
+        granted: 'PicoClaw-styring gitt',
+        released: 'PicoClaw-styring frigitt',
+        grantFailed: 'Kunne ikke gi PicoClaw styring',
+        releaseFailed: 'Kunne ikke frigi PicoClaw styring',
+        grantConfirmTitle: 'Bytte enhetsstyring til PicoClaw?',
+        grantConfirmDesc: 'Eksterne MCP-enhetsskrivinger blir avbrutt.'
       },
       install: {
         install: 'Installer PicoClaw',
@@ -754,15 +819,22 @@ const nb = {
         deleteConfirmOk: 'Slett',
         deleteConfirmCancel: 'Avbryt',
         messageCount_one: '{{count}} melding',
-        messageCount_other: '{{count}} meldinger'
+        messageCount_other: '{{count}} meldinger',
+        messageCount: '{{count}} meldinger'
       },
       config: {
         startRuntime: 'Start PicoClaw',
         stopRuntime: 'Stopp PicoClaw'
       },
       start: {
+        enableConfirmTitle: 'Bytte styringen til PicoClaw?',
+        enableConfirmDesc: 'Når PicoClaw startes, deaktiveres den eksterne MCP-tjenesten.',
+        enableConfirmOk: 'Start PicoClaw',
+        enableConfirmCancel: 'Avbryt',
         title: 'Start PicoClaw',
-        description: 'Start runtime for å begynne å bruke PicoClaw-assistenten.'
+        description: 'Start runtime for å begynne å bruke PicoClaw-assistenten.',
+        switchFromMCP: 'Switch to PicoClaw and start',
+        takeoverAndStart: 'Take over and start'
       }
     },
     error: {

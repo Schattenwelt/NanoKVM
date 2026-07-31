@@ -79,6 +79,11 @@ const uk = {
       frameDetectTip:
         'Обчислює різницю між кадрами. Зупиняє передачу відеопотоку, коли на екрані віддаленого хоста не виявлено змін.',
       resetHdmi: 'Перезавантажити HDMI підсистему',
+      mixedH264: {
+        title: 'Конфлікт потоків H.264',
+        description:
+          'H.264 Direct і H.264 WebRTC використовуються одночасно. Це може спричинити розриви зображення або пошкодження відео. Використовуйте лише один режим H.264.'
+      },
       captureStatus: {
         hdmiError: 'Помилка зображення HDMI',
         unsupportedResolution: 'Поточна роздільна здатність не підтримується',
@@ -253,7 +258,15 @@ const uk = {
       disabled: 'Розділ даних /data у режимі лише для читання, тому ми не можемо завантажити образ',
       uploadbox: 'Перетягніть файл сюди або натисніть, щоб вибрати',
       inputfile: 'Будь ласка, введіть файл зображення',
-      NoISO: 'Немає ISO'
+      NoISO: 'Немає ISO',
+      sha256: 'SHA-256 (необов’язково)',
+      sha256Placeholder: 'Введіть контрольну суму SHA-256 із 64 символів',
+      invalidSHA256: 'SHA-256 має бути шістнадцятковим рядком із 64 символів',
+      failed: 'Помилка завантаження',
+      success: 'Завантаження успішне',
+      checksumFailed: 'Помилка завантаження: перевірка SHA-256 не пройдена',
+      cancel: 'Скасувати',
+      cancelFailed: 'Не вдалося скасувати завантаження'
     },
     power: {
       title: 'Живлення',
@@ -270,6 +283,24 @@ const uk = {
     },
     settings: {
       title: 'Налаштування',
+      mcp: {
+        title: 'Служба MCP',
+        service: 'Віддалене керування MCP',
+        serviceDesc:
+          'Дозволити довіреним клієнтам MCP керувати клавіатурою та мишею і робити знімки екрана',
+        securityWarning:
+          'Будь-хто, хто має цей ключ API, може керувати віддаленим хостом і переглядати його екран. Використовуйте HTTPS і вмикайте службу лише в довірених мережах.',
+        endpoint: 'Кінцева точка',
+        apiKey: 'Ключ API',
+        regenerateConfirmTitle: 'Створити новий ключ API MCP?',
+        regenerateConfirmDesc: 'Поточний ключ негайно припинить працювати.',
+        enableConfirmTitle: 'Увімкнути зовнішнє керування MCP?',
+        enableConfirmDesc: 'Увімкнення MCP зупинить PicoClaw і закриє всі активні сеанси PicoClaw.',
+        failed: 'Операція MCP завершилася помилкою',
+        copyFailed: 'Не вдалося скопіювати. Скопіюйте вручну.',
+        okBtn: 'Підтвердити',
+        cancelBtn: 'Скасувати'
+      },
       about: {
         title: 'Про NanoKVM',
         information: 'Інформація',
@@ -345,7 +376,10 @@ const uk = {
           tip: 'Вимкнути, якщо це не потрібно'
         },
         hdmi: {
-          description: 'Увімкнути вихід HDMI/monitor'
+          description: 'Увімкнути вихід HDMI/monitor',
+          idleTimeoutTitle: 'Час очікування неактивного захоплення',
+          idleTimeoutDescription: 'Зупинити захоплення HDMI, якщо активних глядачів немає протягом',
+          minutes: 'хв'
         },
         autostart: {
           title: 'Налаштування сценаріїв автозапуску',
@@ -668,19 +702,28 @@ const uk = {
         runtimeStarted: 'Runtime PicoClaw запущено',
         runtimeStartFailed: 'Не вдалося запустити runtime PicoClaw',
         runtimeStopped: 'Runtime PicoClaw зупинено',
-        runtimeStopFailed: 'Не вдалося зупинити runtime PicoClaw'
+        runtimeStopFailed: 'Не вдалося зупинити runtime PicoClaw',
+        controlSwitchedToMCP: 'Керування перемкнено на зовнішню службу MCP'
       },
       connection: {
         runtime: {
           checking: 'Перевірка',
+          restoring: 'Restoring PicoClaw',
           ready: 'Runtime готовий',
           stopped: 'Runtime зупинено',
+          blockedByMCP: 'Зовнішнє керування MCP активне',
+          readyBlockedByMCP: 'The runtime is running, but external MCP currently controls device input.',
+          readyWithoutControl: 'The runtime is running. Grant PicoClaw device control before reconnecting.',
           unavailable: 'Runtime недоступний',
           configError: 'Помилка конфігурації'
         },
         transport: {
           connecting: 'Підключення',
-          connected: 'Підключено'
+          connected: 'Підключено',
+          disconnected: 'Disconnected',
+          reconnect: 'Reconnect',
+          reconnectDescription: 'Reconnect to the running PicoClaw session.',
+          reconnectBlocked: 'PicoClaw needs device control before reconnecting.'
         },
         run: {
           idle: 'Бездіяльність',
@@ -694,6 +737,28 @@ const uk = {
       },
       overlay: {
         locked: 'PicoClaw керує пристроєм. Ручне введення призупинено.'
+      },
+      control: {
+        picoclaw: 'Керування пристроєм: PicoClaw',
+        picoclawDescription: 'PicoClaw can write keyboard and mouse input. Manual input may pause.',
+        mcp: 'Керування пристроєм: зовнішній MCP',
+        mcpDescription: 'External MCP can write to the device. PicoClaw will not take over input.',
+        off: 'Керування пристроєм: вимкнено',
+        offDescription: 'AI will not write keyboard or mouse input. Manual control remains available.',
+        transitioning: 'Device control: switching',
+        transitioningDescription: 'Device control is syncing. Please wait.',
+        grant: 'Надати керування',
+        release: 'Звільнити',
+        releasing: 'Releasing...',
+        switching: 'Switching...',
+        releasingLabel: 'Device control: releasing',
+        releasingDescription: 'Device control is being returned. PicoClaw has stopped current writes.',
+        granted: 'Керування PicoClaw надано',
+        released: 'Керування PicoClaw звільнено',
+        grantFailed: 'Не вдалося надати керування PicoClaw',
+        releaseFailed: 'Не вдалося звільнити керування PicoClaw',
+        grantConfirmTitle: 'Перемкнути керування пристроєм на PicoClaw?',
+        grantConfirmDesc: 'Записи пристрою зовнішнім MCP буде перервано.'
       },
       install: {
         install: 'Встановити PicoClaw',
@@ -755,15 +820,22 @@ const uk = {
         deleteConfirmOk: 'Видалити',
         deleteConfirmCancel: 'Скасувати',
         messageCount_one: '{{count}} повідомлення',
-        messageCount_other: '{{count}} повідомлень'
+        messageCount_other: '{{count}} повідомлень',
+        messageCount: '{{count}} повідомлень'
       },
       config: {
         startRuntime: 'Запустити PicoClaw',
         stopRuntime: 'Зупинити PicoClaw'
       },
       start: {
+        enableConfirmTitle: 'Перемкнути керування на PicoClaw?',
+        enableConfirmDesc: 'Запуск PicoClaw вимкне зовнішню службу MCP.',
+        enableConfirmOk: 'Запустити PicoClaw',
+        enableConfirmCancel: 'Скасувати',
         title: 'Запустити PicoClaw',
-        description: 'Запустіть runtime, щоб почати використовувати помічника PicoClaw.'
+        description: 'Запустіть runtime, щоб почати використовувати помічника PicoClaw.',
+        switchFromMCP: 'Switch to PicoClaw and start',
+        takeoverAndStart: 'Take over and start'
       }
     },
     error: {

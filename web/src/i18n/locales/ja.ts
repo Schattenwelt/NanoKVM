@@ -78,6 +78,11 @@ const ja = {
       frameDetectTip:
         'フレーム間の差異を計算し、リモートホストの画面が変更されない場合はビデオストリームの送信を停止します',
       resetHdmi: 'HDMI をリセット',
+      mixedH264: {
+        title: 'H.264 ストリームの競合',
+        description:
+          'H.264 Direct と H.264 WebRTC が同時に使用されています。画面のティアリングや映像の破損が発生する可能性があります。H.264 モードは 1 つだけ使用してください。'
+      },
       captureStatus: {
         hdmiError: 'HDMI 画面エラー',
         unsupportedResolution: '現在の解像度はサポートされていません',
@@ -253,7 +258,15 @@ const ja = {
         '/data パーティションは読み取り専用であり、イメージのダウンロードには使用できません',
       uploadbox: 'ここにファイルをドロップするか、クリックして選択してください',
       inputfile: '画像ファイルを入力してください',
-      NoISO: 'ISO なし'
+      NoISO: 'ISO なし',
+      sha256: 'SHA-256（任意）',
+      sha256Placeholder: '64 文字の SHA-256 チェックサムを入力してください',
+      invalidSHA256: 'SHA-256 は 64 文字の 16 進数文字列である必要があります',
+      failed: 'ダウンロードに失敗しました',
+      success: 'ダウンロードに成功しました',
+      checksumFailed: 'ダウンロードに失敗しました：SHA-256 検証に失敗しました',
+      cancel: 'キャンセル',
+      cancelFailed: 'ダウンロードのキャンセルに失敗しました'
     },
     power: {
       title: '電源',
@@ -270,6 +283,25 @@ const ja = {
     },
     settings: {
       title: '設定',
+      mcp: {
+        title: 'MCP サービス',
+        service: 'MCP リモート制御',
+        serviceDesc:
+          '信頼できる MCP クライアントによるキーボードとマウスの操作、およびスクリーンショットの取得を許可します',
+        securityWarning:
+          'この API キーを持つ人は誰でもリモートホストを操作し、画面を表示できます。HTTPS を使用し、信頼できるネットワークでのみ有効にしてください。',
+        endpoint: 'エンドポイント',
+        apiKey: 'API キー',
+        regenerateConfirmTitle: 'MCP API キーを再生成しますか？',
+        regenerateConfirmDesc: '現在のキーは直ちに使用できなくなります。',
+        enableConfirmTitle: '外部 MCP 制御を有効にしますか？',
+        enableConfirmDesc:
+          'MCP を有効にすると PicoClaw が停止し、アクティブな PicoClaw セッションがすべて終了します。',
+        failed: 'MCP 操作に失敗しました',
+        copyFailed: 'コピーに失敗しました。手動でコピーしてください。',
+        okBtn: '確認',
+        cancelBtn: 'キャンセル'
+      },
       about: {
         title: 'NanoKVM について',
         information: '情報',
@@ -345,7 +377,10 @@ const ja = {
           tip: 'この機能を使用していない場合は、オフにすることをお勧めします'
         },
         hdmi: {
-          description: 'HDMI/モニター 出力機能を有効にする'
+          description: 'HDMI/モニター 出力機能を有効にする',
+          idleTimeoutTitle: 'キャプチャのアイドルタイムアウト',
+          idleTimeoutDescription: 'アクティブな閲覧者がいない状態が次の時間続いたら HDMI キャプチャを停止',
+          minutes: '分'
         },
         autostart: {
           title: '自動起動スクリプト設定',
@@ -670,19 +705,28 @@ const ja = {
         runtimeStarted: 'PicoClaw ランタイムが開始されました',
         runtimeStartFailed: 'PicoClaw ランタイムの開始に失敗しました',
         runtimeStopped: 'PicoClaw ランタイムが停止しました',
-        runtimeStopFailed: 'PicoClaw ランタイムの停止に失敗しました'
+        runtimeStopFailed: 'PicoClaw ランタイムの停止に失敗しました',
+        controlSwitchedToMCP: '制御が外部 MCP サービスに切り替わりました'
       },
       connection: {
         runtime: {
           checking: 'チェック中',
+          restoring: 'Restoring PicoClaw',
           ready: 'ランタイムの準備が完了しました',
           stopped: 'ランタイムが停止しました',
+          blockedByMCP: '外部 MCP 制御が有効です',
+          readyBlockedByMCP: 'The runtime is running, but external MCP currently controls device input.',
+          readyWithoutControl: 'The runtime is running. Grant PicoClaw device control before reconnecting.',
           unavailable: 'ランタイムが使用できません',
           configError: '構成エラー'
         },
         transport: {
           connecting: '接続中',
-          connected: '接続されました'
+          connected: '接続されました',
+          disconnected: 'Disconnected',
+          reconnect: 'Reconnect',
+          reconnectDescription: 'Reconnect to the running PicoClaw session.',
+          reconnectBlocked: 'PicoClaw needs device control before reconnecting.'
         },
         run: {
           idle: 'アイドル状態',
@@ -696,6 +740,28 @@ const ja = {
       },
       overlay: {
         locked: 'PicoClaw がデバイスを制御しています。手動入力が一時停止されます。'
+      },
+      control: {
+        picoclaw: 'デバイス制御: PicoClaw',
+        picoclawDescription: 'PicoClaw can write keyboard and mouse input. Manual input may pause.',
+        mcp: 'デバイス制御: 外部 MCP',
+        mcpDescription: 'External MCP can write to the device. PicoClaw will not take over input.',
+        off: 'デバイス制御: オフ',
+        offDescription: 'AI will not write keyboard or mouse input. Manual control remains available.',
+        transitioning: 'Device control: switching',
+        transitioningDescription: 'Device control is syncing. Please wait.',
+        grant: '制御を付与',
+        release: '解除',
+        releasing: 'Releasing...',
+        switching: 'Switching...',
+        releasingLabel: 'Device control: releasing',
+        releasingDescription: 'Device control is being returned. PicoClaw has stopped current writes.',
+        granted: 'PicoClaw 制御を付与しました',
+        released: 'PicoClaw 制御を解除しました',
+        grantFailed: 'PicoClaw 制御の付与に失敗しました',
+        releaseFailed: 'PicoClaw 制御の解除に失敗しました',
+        grantConfirmTitle: 'デバイス制御を PicoClaw に切り替えますか?',
+        grantConfirmDesc: '外部 MCP のデバイス書き込みは中断されます。'
       },
       install: {
         install: 'PicoClaw をインストールする',
@@ -758,15 +824,22 @@ const ja = {
         deleteConfirmOk: '削除',
         deleteConfirmCancel: 'キャンセル',
         messageCount_one: '{{count}} メッセージ',
-        messageCount_other: '{{count}} メッセージ'
+        messageCount_other: '{{count}} メッセージ',
+        messageCount: '{{count}} メッセージ'
       },
       config: {
         startRuntime: 'PicoClaw を開始',
         stopRuntime: 'PicoClaw を停止'
       },
       start: {
+        enableConfirmTitle: '制御を PicoClaw に切り替えますか？',
+        enableConfirmDesc: 'PicoClaw を開始すると外部 MCP サービスが無効になります。',
+        enableConfirmOk: 'PicoClaw を開始',
+        enableConfirmCancel: 'キャンセル',
         title: 'PicoClaw を開始',
-        description: 'ランタイムを起動して、PicoClaw アシスタントの使用を開始します。'
+        description: 'ランタイムを起動して、PicoClaw アシスタントの使用を開始します。',
+        switchFromMCP: 'Switch to PicoClaw and start',
+        takeoverAndStart: 'Take over and start'
       }
     },
     error: {
