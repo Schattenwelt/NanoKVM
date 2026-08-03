@@ -173,10 +173,6 @@ If you are looking for a USB-based KVM solution, check out [NanoKVM-USB](https:/
 
 For module-level guides, see the upstream documentation:
 
-- **Backend service:** [`server/README.md`](server/README.md)
-- **Frontend UI:** [`web/README.md`](web/README.md)
-- **System support modules:** [`support/sg2002/README.md`](support/sg2002/README.md)
-
 The RBAC additions live entirely in:
 
 - `server/service/auth/`
