@@ -41,6 +41,11 @@ func hidRouter(r *gin.Engine) {
 	adminAPI.POST("/hid/mode", service.SetHidMode) // set hid mode
 	adminAPI.POST("/hid/reset", service.ResetHid)  // reset hid
 
+	// Read-only keyboard LED status (num/caps/scroll): all authenticated roles
+	// incl. viewer, since it only mirrors the screen's lock indicators.
+	viewAPI := r.Group("/api").Use(middleware.CheckToken())
+	viewAPI.GET("/hid/leds", service.GetKeyboardLedStatus)
+
 	// Internal loopback (for kvm_system / picoclaw): no JWT, only loopback token
 	localAPI := r.Group("/api/internal").Use(middleware.CheckLoopbackInternalToken())
 	localAPI.POST("/usb/recover", service.RecoverUSB)
