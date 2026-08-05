@@ -15,11 +15,6 @@ export function getHidMode() {
   return http.get('/api/hid/mode');
 }
 
-// get remote keyboard lock LED status
-export function getKeyboardLedStatus() {
-  return http.get('/api/hid/leds');
-}
-
 // set hid mode
 export function setHidMode(mode: string) {
   const data = {
@@ -57,4 +52,9 @@ export function getLeaderKey() {
 // set shortcut leader key
 export function setLeaderKey(key: string) {
   return http.post('/api/hid/shortcut/leader-key', { key });
+}
+
+// get remote keyboard lock LED status
+export function getKeyboardLedStatus() {
+  return http.get('/api/hid/leds');
 }

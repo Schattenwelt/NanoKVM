@@ -24,15 +24,20 @@ type picoclawConfigDefault struct {
 }
 
 var picoclawNanoKVMDefaults = []picoclawConfigDefault{
-	{path: []string{"agents", "defaults", "restrict_to_workspace"}, value: false},
-	{path: []string{"agents", "defaults", "allow_read_outside_workspace"}, value: true},
+	// [Fork] Hardened defaults: keep the agent confined to its workspace and
+	// deny reads outside it. Upstream ships these permissive (false / true).
+	{path: []string{"agents", "defaults", "restrict_to_workspace"}, value: true},
+	{path: []string{"agents", "defaults", "allow_read_outside_workspace"}, value: false},
 	{path: []string{"agents", "defaults", "tool_feedback", "enabled"}, value: true},
 	{path: []string{"gateway", "host"}, value: defaultPicoclawGatewayHost},
 	{path: []string{"gateway", "port"}, value: defaultPicoclawGatewayPort},
 	{path: []string{"gateway", "hot_reload"}, value: false},
-	{path: []string{"tools", "cron", "allow_command"}, value: true},
-	{path: []string{"tools", "exec", "allow_remote"}, value: true},
-	{path: []string{"tools", "exec", "enable_deny_patterns"}, value: false},
+	// [Fork] Hardened defaults: no scheduled command execution, no remote exec,
+	// and keep the exec deny-pattern filter on. Upstream ships these permissive
+	// (true / true / false), which effectively grants the model a shell on the BMC.
+	{path: []string{"tools", "cron", "allow_command"}, value: false},
+	{path: []string{"tools", "exec", "allow_remote"}, value: false},
+	{path: []string{"tools", "exec", "enable_deny_patterns"}, value: true},
 	{path: []string{"channel_list", "pico", "type"}, value: "pico"},
 	{path: []string{"channel_list", "pico", "settings", "allow_token_query"}, value: false},
 	{path: []string{"channel_list", "pico", "settings", "ping_interval"}, value: defaultPicoclawPingSec},

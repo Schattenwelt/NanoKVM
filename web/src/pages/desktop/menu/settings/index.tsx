@@ -48,6 +48,14 @@ export const Settings = () => {
   const setKeyboardLock = useSetAtom(keyboardLockAtom);
   const setSubmenuOpenCount = useSetAtom(submenuOpenCountAtom);
 
+  const { isAdmin, isOperator } = useRole();
+
+  const allTabs = [
+    { id: 'about', roles: ['admin', 'operator', 'viewer'], icon: <BadgeInfoIcon size={16} />, component: <About /> },
+    { id: 'appearance', roles: ['admin', 'operator', 'viewer'], icon: <PaletteIcon size={16} />, component: <Appearance /> },
+    { id: 'device', roles: ['admin'], icon: <SmartphoneIcon size={16} />, component: <Device /> },
+    { id: 'network', roles: ['admin'], icon: <NetworkIcon size={16} />, component: <Network /> },
+    { id: 'mcp', roles: ['admin'], icon: <BotIcon size={16} />, component: <MCP /> },
     {
       id: 'tailscale',
       roles: ['admin'],

@@ -39,7 +39,14 @@ func PicoclawLoopbackHTTPAllowedPaths() []string {
 }
 
 func picoclawRouter(r *gin.Engine, service *picoclaw.Service) {
-	frontendAPI := r.Group(picoclawBasePath).Use(middleware.CheckToken())
+	// [Fork] PicoClaw exposes a broad-capability agent (screen egress to a cloud
+	// LLM, plus shell/exec on the device). Restrict all user-facing routes to
+	// admins. The loopback routes below are reached by the local gateway via the
+	// internal token, not by a browser, so they keep their own auth.
+	frontendAPI := r.Group(picoclawBasePath).Use(
+		middleware.CheckToken(),
+		middleware.RequireRole(middleware.RoleAdmin),
+	)
 	localAPI := r.Group(picoclawBasePath).Use(middleware.CheckLoopbackInternalToken())
 
 	localAPI.GET(picoclawScreenshotPath, service.Screenshot)
