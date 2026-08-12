@@ -1,5 +1,29 @@
 # Changelog
 
+[Fork] 2.5.0 — 2026-08-12
+
+Fourth Schattenwelt-fork release. Based on upstream 2.5.0.
+
+Version realignment: earlier fork releases ran one patch ahead of their upstream base (e.g. [Fork] 2.4.4 was built on upstream 2.4.3) so the fork's own update channel would detect a new build even when the upstream base was unchanged. This release drops that offset: rebasing from a 2.4.3 base onto a 2.5.0 base is itself a version increase, so devices on [Fork] 2.4.4 detect 2.5.0 as newer without an artificial bump. From here the fork tracks the upstream version 1:1. (If a future fork-only change ships on an unchanged upstream base, it must be bumped manually so semver still surfaces it.)
+
+Unlike the 2.4.x rebases, upstream 2.5.0 changed the Go backend and React frontend source substantially (new MCP service, coordinated device control, remote keyboard LED indicators, H.264 pipeline rework), so the multi-user RBAC, activity/audit log and static-IPv4 patches were re-applied on top of the merged 2.5.0 source rather than carried over unchanged.
+
+Changed
+Rebased onto upstream Sipeed/NanoKVM 2.5.0 as a full source merge (not a build-level rebase like 2.4.3 → 2.4.4).
+go.mod now declares go 1.25.0 with the matching dependency versions (x/net, x/crypto, x/sys, x/text, pion/dtls, pion/webrtc) required by the new MCP SDK (needs Go ≥ 1.25) and jsonschema-go (≥ 1.23). The build no longer downgrades these to the old 2.4.x versions; only go.sum is regenerated at build time.
+Added
+RBAC gating for the keyboard-LED endpoint. The new upstream route GET /api/hid/leds (target machine's Num/Caps/Scroll-Lock state) is gated to authenticated users. Current policy: available to all roles including Viewer.
+Admin-only RBAC for the MCP service. The MCP settings page and its enable / API-key-regenerate endpoints are restricted to Admin, since the service can capture screenshots and drive the keyboard and mouse.
+Notes
+Upstream 2.5.0 introduces its own USB-gadget MAC determinism fix (host and device MAC both derived from the chip UID). This overlaps the fork's earlier S03usbdev fix — the fork's patch is redundant on the 2.5.0 base and can be dropped once confirmed.
+The version file and latest.json are both stamped 2.5.0.
+Inherited from upstream 2.5.0
+MCP service for trusted clients: screenshot capture plus keyboard/mouse control via an API key, with a settings page to enable it and regenerate the key.
+Coordinated device control so MCP, PicoClaw and manual input hand HID ownership to each other instead of writing input at the same time.
+Remote keyboard lock indicators (Num/Caps/Scroll Lock) — the "keyboard LED status" feature.
+Optional SHA-256 checksum and cancellation for remote image downloads.
+H.264 latency / flow-control rework, HDMI-idle power saving, OLED sleep duration fix (> 255 s options), HID-Only mounted-image fix, and shared video-input state between NanoKVM-Server and kvm_system.
+
 This changelog tracks releases of the **Schattenwelt/NanoKVM fork**.
 Each entry marked `[Fork]` describes the changes this fork adds on top of
 upstream Sipeed/NanoKVM. The fork keeps its own version line, which can run
