@@ -49,7 +49,7 @@ func (s *Service) Login(c *gin.Context) {
 
 	ClearLoginAttempt(clientIP)
 
-	token, err := middleware.GenerateJWT(account.Username, string(account.Role))
+	token, err := middleware.GenerateJWT(account.Username, string(account.Role), account.TokenVersion)
 	if err != nil {
 		time.Sleep(1 * time.Second)
 		rsp.ErrRsp(c, -3, "generate token failed")
@@ -64,11 +64,16 @@ func (s *Service) Login(c *gin.Context) {
 }
 
 func (s *Service) Logout(c *gin.Context) {
-	conf := config.GetInstance()
-	if conf.JWT.RevokeTokensOnLogout {
-		config.RegenerateSecretKey()
-	}
 	var rsp proto.Response
+	// Revoke only THIS user's sessions by bumping their token version, instead of
+	// regenerating the global secret key (which logged out every NanoKVM user).
+	if v, ok := c.Get("username"); ok {
+		if username, ok2 := v.(string); ok2 && username != "" {
+			if err := BumpTokenVersion(username); err != nil {
+				log.Warnf("logout: failed to revoke sessions for %s: %s", username, err)
+			}
+		}
+	}
 	rsp.OkRsp(c)
 }
 

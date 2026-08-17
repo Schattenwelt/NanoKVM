@@ -1,6 +1,7 @@
 package picoclaw
 
 import (
+	"NanoKVM-Server/utils"
 	"fmt"
 	"net/http"
 	"strings"
@@ -19,9 +20,7 @@ import (
 var gatewayUpgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+	CheckOrigin:     utils.IsSameOrigin,
 }
 
 type relayResult struct {

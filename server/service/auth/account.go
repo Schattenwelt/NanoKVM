@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -30,6 +33,10 @@ type Account struct {
 	Password string `json:"password"` // bcrypt hash
 	Role     Role   `json:"role"`
 	Enabled  bool   `json:"enabled"`
+	// TokenVersion is embedded in every JWT issued for this account. Bumping it
+	// (on logout, disable, delete+recreate, password or role change) invalidates
+	// all outstanding tokens for the user. Absent in legacy files -> defaults to 0.
+	TokenVersion int `json:"tokenVersion"`
 }
 
 // legacyAccount mirrors the old single-user format for migration.
@@ -64,16 +71,79 @@ func GetAccountByUsername(username string) (*Account, error) {
 	return nil, errors.New("user not found")
 }
 
-// SaveAccounts writes the full account list to disk.
+// SaveAccounts writes the full account list to disk atomically: it writes to a
+// temp file in the same directory, fsyncs it, then renames over the target and
+// fsyncs the directory. A crash or power loss can therefore never leave a
+// truncated or half-written accounts file behind.
 func SaveAccounts(accounts []Account) error {
 	data, err := json.MarshalIndent(accounts, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err = os.MkdirAll(filepath.Dir(AccountFile), 0o755); err != nil {
+	dir := filepath.Dir(AccountFile)
+	if err = os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(AccountFile, data, 0o600)
+
+	tmp, err := os.CreateTemp(dir, ".accounts-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	// Best-effort cleanup if we bail out before the rename; a no-op afterwards.
+	defer func() { _ = os.Remove(tmpName) }()
+
+	if _, err = tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err = tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err = tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	if err = os.Rename(tmpName, AccountFile); err != nil {
+		return err
+	}
+	if d, derr := os.Open(dir); derr == nil {
+		_ = d.Sync()
+		_ = d.Close()
+	}
+	return nil
+}
+
+// BumpTokenVersion increments a user's token version, invalidating every JWT
+// previously issued to them.
+func BumpTokenVersion(username string) error {
+	accounts, err := GetAccounts()
+	if err != nil {
+		return err
+	}
+	for i, a := range accounts {
+		if a.Username == username {
+			accounts[i].TokenVersion++
+			return SaveAccounts(accounts)
+		}
+	}
+	return errors.New("user not found")
+}
+
+// randomTokenVersion returns a random positive int used as the initial token
+// version for freshly created accounts. Randomising it means a token minted for
+// a deleted user cannot validate against a later account that happens to reuse
+// the same username.
+func randomTokenVersion() int {
+	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
+	if err != nil {
+		return int(time.Now().UnixNano() & 0x7fffffff)
+	}
+	return int(n.Int64()) + 1
 }
 
 // AddAccount appends a new user. Returns error if username exists.
@@ -92,10 +162,11 @@ func AddAccount(username, plainPassword string, role Role) error {
 		return err
 	}
 	accounts = append(accounts, Account{
-		Username: username,
-		Password: string(hashed),
-		Role:     role,
-		Enabled:  true,
+		Username:     username,
+		Password:     string(hashed),
+		Role:         role,
+		Enabled:      true,
+		TokenVersion: randomTokenVersion(),
 	})
 	return SaveAccounts(accounts)
 }
@@ -109,6 +180,7 @@ func UpdateAccountPassword(username, hashedPassword string) error {
 	for i, a := range accounts {
 		if a.Username == username {
 			accounts[i].Password = hashedPassword
+			accounts[i].TokenVersion++ // invalidate existing sessions
 			return SaveAccounts(accounts)
 		}
 	}
@@ -124,6 +196,7 @@ func UpdateAccountRole(username string, role Role) error {
 	for i, a := range accounts {
 		if a.Username == username {
 			accounts[i].Role = role
+			accounts[i].TokenVersion++ // force re-auth with the new role
 			return SaveAccounts(accounts)
 		}
 	}
@@ -139,6 +212,9 @@ func SetAccountEnabled(username string, enabled bool) error {
 	for i, a := range accounts {
 		if a.Username == username {
 			accounts[i].Enabled = enabled
+			if !enabled {
+				accounts[i].TokenVersion++ // kill sessions of a disabled user
+			}
 			return SaveAccounts(accounts)
 		}
 	}
@@ -227,8 +303,9 @@ func migrateLegacyAccount() ([]Account, error) {
 	}
 	var legacy legacyAccount
 	if err = json.Unmarshal(data, &legacy); err != nil {
+		// Fail closed: never silently fall back to admin/admin on corrupt data.
 		log.Errorf("failed to unmarshal legacy account: %s", err)
-		return []Account{defaultAdminAccount()}, nil
+		return nil, errors.New("legacy account file is corrupt")
 	}
 	account := Account{
 		Username: legacy.Username,

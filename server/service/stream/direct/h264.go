@@ -2,7 +2,7 @@ package direct
 
 import (
 	"NanoKVM-Server/service/stream"
-	"net/http"
+	"NanoKVM-Server/utils"
 	"strconv"
 	"time"
 
@@ -17,9 +17,7 @@ var (
 	streamer = newStreamer()
 	upgrader = websocket.Upgrader{
 		WriteBufferSize: 256 * 1024,
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
+		CheckOrigin:     utils.IsSameOrigin,
 	}
 )
 
