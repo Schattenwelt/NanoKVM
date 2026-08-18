@@ -1,5 +1,97 @@
 # Changelog
 
+## [Fork] 2.5.1 — 2026-08-18
+
+Fifth Schattenwelt-fork release. A **security-hardening** release on the same
+upstream 2.5.0 base — no upstream rebase. Because the upstream base is unchanged,
+the patch number is bumped manually from 2.5.0 to 2.5.1 (as flagged in the 2.5.0
+notes) so the fork's own update channel detects it as newer via `semver.gte`.
+
+The multi-user auth stack — RBAC, sessions, account storage, WebSockets and login
+throttling — was hardened end-to-end. All changes are fork Go/React *source*,
+compiled by the fork; no precompiled components or init scripts changed.
+
+### Added
+
+* **Logout button in the toolbar.** A logout control now sits next to the settings
+  gear in the main menu, available to every role and with a confirmation step.
+  Previously logout was only reachable under Settings → Account.
+
+### Security
+
+* **Same-origin enforcement on all WebSockets.** The HID, terminal, direct-H.264,
+  WebRTC-signalling and PicoClaw-gateway upgraders previously accepted any
+  `Origin`. They now require a same-origin handshake, closing a cross-site
+  WebSocket hijacking (CSWSH) vector by which a malicious page could drive the
+  root terminal of a logged-in admin. Native clients without an `Origin` header
+  (e.g. the mobile app) are unaffected.
+* **Session revocation via token versioning.** Every account carries a
+  `tokenVersion` embedded in its JWT. Logout, disable, delete, and password or role
+  changes bump it, invalidating all outstanding tokens for that user. Previously
+  nothing could invalidate a live JWT before expiry.
+* **Live role checks — roles are no longer trusted from the JWT.** Each request
+  reloads the account from the store and takes the role from there, so a demoted or
+  disabled user loses access immediately instead of at token expiry; deleted or
+  revoked accounts fail closed.
+* **Per-user logout instead of a global secret reset.** Logout now revokes only the
+  current user's sessions (token-version bump); it no longer regenerates the global
+  signing key, which had logged out every user at once.
+* **HttpOnly session cookies.** The server now sets the JWT in an `HttpOnly`,
+  `SameSite=Strict` cookie (`Secure` under TLS) and no longer returns the token in
+  the login response body, so it can no longer be read or stolen from JavaScript. A
+  separate non-secret flag cookie carries the logged-in state for the UI.
+* **Current password required to change your own password.** Self-service password
+  changes must confirm the current password first, so a hijacked or unattended
+  session cannot silently lock the user out. Admin resets of *other* accounts are
+  unaffected.
+* **Live WebSocket teardown on revocation.** A watchdog periodically re-checks every
+  open WebSocket against live account state and closes it (close code `4401`) when
+  the user is disabled, deleted, or their token version changes — so a running
+  stream or terminal is torn down within seconds instead of surviving until token
+  expiry. This also catches external changes such as a BOOT reset of the account
+  file.
+* **Name-independent device-owner protection.** The account whose password is
+  synchronised to the Linux `root`/SSH password is now marked with an explicit
+  `systemAccount` flag (set at creation/migration, backfilled on older files)
+  instead of being assumed to be literally `admin`. Only the owner may change the
+  owner's password, and the owner cannot be demoted, disabled, or deleted by another
+  admin. This also fixes a pre-existing bug where the root-password sync silently did
+  nothing when the account had been renamed during first-time setup.
+* **Per-username login throttling.** Brute-force protection now throttles by username
+  in addition to source IP, so an attacker rotating IPs still trips a per-account
+  lockout and a shared NAT/proxy IP no longer masks repeated attempts against a
+  single account. Same thresholds and on/off toggle as the existing IP limit.
+* **Hardened JWT parsing.** Token verification now pins the signing algorithm to
+  HS256 (rejecting `alg=none` and algorithm-confusion), requires an expiry, and
+  requires a username claim.
+* **Atomic, fail-closed account storage.** `accounts.json` is written atomically
+  (temp file → fsync → rename → directory fsync, mode `0600`), so a crash or power
+  loss cannot leave it truncated; a corrupt account file now fails closed instead of
+  silently resetting to `admin`/`admin`. Newly created accounts get a random initial
+  token version so an old session cannot validate against a re-created username.
+
+### Changed
+
+* The account record gained two fields, `tokenVersion` and `systemAccount`. Both are
+  backward compatible: absent values default sensibly, and `systemAccount` is
+  backfilled once on first read (preferring an existing `admin`, else the first
+  admin-role account).
+
+### Notes
+
+* **One-time re-login after update.** Because the session cookie format changed
+  (HttpOnly, no token in the response body), all users are logged out once by this
+  update and must sign in again. This happens only on this upgrade.
+* **Owner password recovery.** With device-owner protection, other admins can no
+  longer reset the owner account's password. If the owner forgets it, recovery is via
+  SSH/root or physical access — by design, since that password syncs to `root`.
+* **TLS recommended.** The `Secure` cookie flag is only set when the request is over
+  HTTPS, so plain-HTTP LAN access keeps working; full protection against network
+  interception requires enabling TLS.
+* The `version` file and `latest.json` are both stamped `2.5.1`.
+
+---
+
 ## [Fork] 2.5.0 — 2026-08-12
 
 Fourth Schattenwelt-fork release. Rebased onto upstream 2.5.0. Unlike the earlier
