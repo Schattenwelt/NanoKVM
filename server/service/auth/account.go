@@ -37,6 +37,10 @@ type Account struct {
 	// (on logout, disable, delete+recreate, password or role change) invalidates
 	// all outstanding tokens for the user. Absent in legacy files -> defaults to 0.
 	TokenVersion int `json:"tokenVersion"`
+	// SystemAccount marks the device-owner account whose password is synced to
+	// the Linux root user. It is protected (only the owner may change it) and is
+	// set at creation/migration; older account files are backfilled on first read.
+	SystemAccount bool `json:"systemAccount,omitempty"`
 }
 
 // legacyAccount mirrors the old single-user format for migration.
@@ -278,15 +282,57 @@ func CompareAccount(username, plainPassword string) (*Account, bool) {
 	return account, true
 }
 
-// DeviceOwner is the account whose password is synchronised to the Linux root
-// user (and therefore SSH). It is the device owner: only the owner itself may
-// change its password, role, or enabled state, or delete it. Otherwise a second
-// admin could change this account and hijack root.
-const DeviceOwner = "admin"
+// defaultOwnerUsername is the username given to the owner account on a fresh
+// install, and the preferred pick when backfilling the owner flag onto an older
+// account file that predates it.
+const defaultOwnerUsername = "admin"
 
-// IsDeviceOwner reports whether username is the protected device-owner account.
+// IsDeviceOwner reports whether the named account is the protected device owner
+// (the account whose password is synchronised to the Linux root user). The
+// owner is identified by an explicit flag, NOT by its username, so renaming the
+// account during setup breaks neither the protection nor the root-password sync.
 func IsDeviceOwner(username string) bool {
-	return username == DeviceOwner
+	account, err := GetAccountByUsername(username)
+	if err != nil || account == nil {
+		return false
+	}
+	return account.SystemAccount
+}
+
+// ensureOwner guarantees exactly one account carries the device-owner flag. It
+// returns true if it assigned the flag (the slice was modified) — this happens
+// once, when upgrading an account file created before the flag existed.
+// Preference order: the account named "admin", else the first admin-role
+// account, else the first account.
+func ensureOwner(accounts []Account) bool {
+	if len(accounts) == 0 {
+		return false
+	}
+	for i := range accounts {
+		if accounts[i].SystemAccount {
+			return false
+		}
+	}
+	idx := -1
+	for i := range accounts {
+		if accounts[i].Username == defaultOwnerUsername {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		for i := range accounts {
+			if accounts[i].Role == RoleAdmin {
+				idx = i
+				break
+			}
+		}
+	}
+	if idx == -1 {
+		idx = 0
+	}
+	accounts[idx].SystemAccount = true
+	return true
 }
 
 // VerifyCurrentPassword checks an encrypted candidate password against the
@@ -319,6 +365,12 @@ func readAccountsFile() ([]Account, error) {
 		log.Errorf("failed to unmarshal accounts: %s", err)
 		return nil, err
 	}
+	if ensureOwner(accounts) {
+		// One-time backfill for account files created before the owner flag.
+		if serr := SaveAccounts(accounts); serr != nil {
+			log.Warnf("failed to persist device-owner flag: %s", serr)
+		}
+	}
 	return accounts, nil
 }
 
@@ -334,10 +386,11 @@ func migrateLegacyAccount() ([]Account, error) {
 		return nil, errors.New("legacy account file is corrupt")
 	}
 	account := Account{
-		Username: legacy.Username,
-		Password: legacy.Password,
-		Role:     RoleAdmin,
-		Enabled:  true,
+		Username:      legacy.Username,
+		Password:      legacy.Password,
+		Role:          RoleAdmin,
+		Enabled:       true,
+		SystemAccount: true,
 	}
 	accounts := []Account{account}
 	if saveErr := SaveAccounts(accounts); saveErr == nil {
@@ -350,9 +403,10 @@ func migrateLegacyAccount() ([]Account, error) {
 func defaultAdminAccount() Account {
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
 	return Account{
-		Username: "admin",
-		Password: string(hashed),
-		Role:     RoleAdmin,
-		Enabled:  true,
+		Username:      defaultOwnerUsername,
+		Password:      string(hashed),
+		Role:          RoleAdmin,
+		Enabled:       true,
+		SystemAccount: true,
 	}
 }

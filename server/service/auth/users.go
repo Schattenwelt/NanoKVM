@@ -22,9 +22,10 @@ func (s *Service) ListUsers(c *gin.Context) {
 	users := make([]proto.UserInfo, 0, len(accounts))
 	for _, a := range accounts {
 		users = append(users, proto.UserInfo{
-			Username: a.Username,
-			Role:     string(a.Role),
-			Enabled:  a.Enabled,
+			Username:      a.Username,
+			Role:          string(a.Role),
+			Enabled:       a.Enabled,
+			SystemAccount: a.SystemAccount,
 		})
 	}
 

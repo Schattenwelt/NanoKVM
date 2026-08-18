@@ -23,6 +23,7 @@ type User = {
   username: string;
   role: string;
   enabled: boolean;
+  systemAccount: boolean;
 };
 
 export const Users = () => {
@@ -134,10 +135,10 @@ export const Users = () => {
       title: t('settings.users.colUsername'),
       dataIndex: 'username',
       key: 'username',
-      render: (name: string) => (
+      render: (name: string, record: User) => (
         <span className="flex items-center gap-1 font-mono">
           {name}
-          {name === 'admin' && (
+          {record.systemAccount && (
             <Tooltip title={t('settings.users.ownerProtected')}>
               <ShieldIcon size={12} className="text-amber-500" />
             </Tooltip>
@@ -154,7 +155,7 @@ export const Users = () => {
           value={role}
           size="small"
           style={{ width: 110 }}
-          disabled={record.username === 'admin'}
+          disabled={record.systemAccount}
           onChange={(val) => handleRoleChange(record.username, val)}
           options={[
             { value: 'admin', label: <Tag color="red">admin</Tag> },
@@ -172,7 +173,7 @@ export const Users = () => {
         <Switch
           size="small"
           checked={enabled}
-          disabled={record.username === 'admin'}
+          disabled={record.systemAccount}
           onChange={(val) => handleToggleEnabled(record.username, val)}
         />
       )
@@ -187,7 +188,7 @@ export const Users = () => {
               size="small"
               type="text"
               icon={<KeyRoundIcon size={14} />}
-              disabled={record.username === 'admin' && selfName !== 'admin'}
+              disabled={record.systemAccount && record.username !== selfName}
               onClick={() => openPwdModal(record.username)}
             />
           </Tooltip>
@@ -202,7 +203,7 @@ export const Users = () => {
                 size="small"
                 type="text"
                 danger
-                disabled={record.username === 'admin'}
+                disabled={record.systemAccount}
                 icon={<Trash2Icon size={14} />}
               />
             </Tooltip>

@@ -27,9 +27,10 @@ type IsPasswordUpdatedRsp struct {
 // --- Multi-user management ---
 
 type UserInfo struct {
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	Enabled  bool   `json:"enabled"`
+	Username      string `json:"username"`
+	Role          string `json:"role"`
+	Enabled       bool   `json:"enabled"`
+	SystemAccount bool   `json:"systemAccount"`
 }
 
 type ListUsersRsp struct {
