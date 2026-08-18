@@ -62,9 +62,11 @@ func GetClientIP(c *gin.Context) string {
 	return ip
 }
 
-// CheckLoginAttempt checks if a login attempt is allowed based on brute-force protection rules.
-// Returning true means the IP/System is locked out, and an error string and error code are returned.
-func CheckLoginAttempt(clientIP string) (bool, int, string) {
+// CheckLoginAttempt checks whether logins for the given key are currently locked
+// out. The key is namespaced by the caller ("ip:<addr>" or "user:<name>") so the
+// same throttle logic protects both a source IP and a targeted username.
+// Returning true means the key is locked out, with an error code and message.
+func CheckLoginAttempt(key string) (bool, int, string) {
 	conf := config.GetInstance()
 	if conf.Security.LoginLockoutDuration <= 0 {
 		return false, 0, ""
@@ -75,9 +77,9 @@ func CheckLoginAttempt(clientIP string) (bool, int, string) {
 	loginMutex.Lock()
 	defer loginMutex.Unlock()
 
-	if attempt, exists := loginAttempts[clientIP]; exists {
+	if attempt, exists := loginAttempts[key]; exists {
 		if time.Now().Before(attempt.lockoutEnd) {
-			log.Debugf("login blocked for IP %s: account locked due to too many failed attempts (until %s)", clientIP, attempt.lockoutEnd)
+			log.Debugf("login blocked for %s: account locked due to too many failed attempts (until %s)", key, attempt.lockoutEnd)
 			return true, -5, "Account locked due to too many failed attempts, please try again later"
 		}
 
@@ -91,8 +93,8 @@ func CheckLoginAttempt(clientIP string) (bool, int, string) {
 	return false, 0, ""
 }
 
-// RecordLoginFailure records a failed login attempt for the given IP address.
-func RecordLoginFailure(clientIP string) (bool, int, string) {
+// RecordLoginFailure records a failed login attempt for the given key.
+func RecordLoginFailure(key string) (bool, int, string) {
 	conf := config.GetInstance()
 	if conf.Security.LoginLockoutDuration <= 0 {
 		return false, 0, ""
@@ -103,7 +105,7 @@ func RecordLoginFailure(clientIP string) (bool, int, string) {
 	loginMutex.Lock()
 	defer loginMutex.Unlock()
 
-	attempt, exists := loginAttempts[clientIP]
+	attempt, exists := loginAttempts[key]
 	if !exists {
 		// When the record pool is full, clear the records instead of global lockout to prevent DDoS
 		if len(loginAttempts) >= maxLoginAttemptsRecords {
@@ -111,7 +113,7 @@ func RecordLoginFailure(clientIP string) (bool, int, string) {
 			loginAttempts = make(map[string]*loginAttempt)
 		}
 		attempt = &loginAttempt{}
-		loginAttempts[clientIP] = attempt
+		loginAttempts[key] = attempt
 	}
 
 	now := time.Now()
@@ -127,14 +129,14 @@ func RecordLoginFailure(clientIP string) (bool, int, string) {
 	// Reach the failure limit, lock out
 	if attempt.failures >= conf.Security.LoginMaxFailures {
 		attempt.lockoutEnd = now.Add(time.Duration(conf.Security.LoginLockoutDuration) * time.Second)
-		log.Debugf("login failures reached threshold for IP %s, locking out until %s", clientIP, attempt.lockoutEnd)
+		log.Debugf("login failures reached threshold for %s, locking out until %s", key, attempt.lockoutEnd)
 	}
 
 	return false, 0, ""
 }
 
-// ClearLoginAttempt clears the failed login attempt record for an IP upon successful login.
-func ClearLoginAttempt(clientIP string) {
+// ClearLoginAttempt clears the failed login attempt record for a key upon successful login.
+func ClearLoginAttempt(key string) {
 	conf := config.GetInstance()
 	if conf.Security.LoginLockoutDuration <= 0 {
 		return
@@ -143,5 +145,5 @@ func ClearLoginAttempt(clientIP string) {
 	loginMutex.Lock()
 	defer loginMutex.Unlock()
 
-	delete(loginAttempts, clientIP)
+	delete(loginAttempts, key)
 }

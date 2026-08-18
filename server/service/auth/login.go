@@ -60,7 +60,8 @@ func (s *Service) Login(c *gin.Context) {
 	}
 
 	clientIP := GetClientIP(c)
-	if locked, code, msg := CheckLoginAttempt(clientIP); locked {
+	ipKey := "ip:" + clientIP
+	if locked, code, msg := CheckLoginAttempt(ipKey); locked {
 		time.Sleep(3 * time.Second)
 		rsp.ErrRsp(c, code, msg)
 		return
@@ -72,20 +73,32 @@ func (s *Service) Login(c *gin.Context) {
 		return
 	}
 
+	// Per-username throttle, in addition to per-IP: locks a targeted account even
+	// when the attacker rotates source IPs, and prevents one shared IP (NAT/proxy)
+	// from masking repeated attempts against a single account.
+	userKey := "user:" + strings.ToLower(req.Username)
+	if locked, code, msg := CheckLoginAttempt(userKey); locked {
+		time.Sleep(3 * time.Second)
+		rsp.ErrRsp(c, code, msg)
+		return
+	}
+
 	account, ok := CompareAccount(req.Username, req.Password)
 	if !ok {
 		c.Set("audit_user", req.Username)
 		c.Set("audit_result", "failure")
 		time.Sleep(2 * time.Second)
-		if locked, code, msg := RecordLoginFailure(clientIP); locked {
+		if locked, code, msg := RecordLoginFailure(ipKey); locked {
 			rsp.ErrRsp(c, code, msg)
 			return
 		}
+		RecordLoginFailure(userKey)
 		rsp.ErrRsp(c, -2, "invalid username or password")
 		return
 	}
 
-	ClearLoginAttempt(clientIP)
+	ClearLoginAttempt(ipKey)
+	ClearLoginAttempt(userKey)
 
 	token, err := middleware.GenerateJWT(account.Username, string(account.Role), account.TokenVersion)
 	if err != nil {
