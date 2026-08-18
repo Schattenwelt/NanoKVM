@@ -15,8 +15,9 @@ type GetAccountRsp struct {
 }
 
 type ChangePasswordReq struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username    string `json:"username" validate:"required"`
+	Password    string `json:"password" validate:"required"`
+	OldPassword string `json:"oldPassword"` // required only for self-service changes
 }
 
 type IsPasswordUpdatedRsp struct {

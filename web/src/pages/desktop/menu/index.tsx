@@ -14,6 +14,7 @@ import { KeyboardLedStatus } from '../keyboard-led-status';
 import { DownloadImage } from './download.tsx';
 import { Fullscreen } from './fullscreen';
 import { Image } from './image';
+import { Logout } from './logout.tsx';
 import { Keyboard } from './keyboard';
 import { Mouse } from './mouse';
 import { Collapse, Expand } from './operations';
@@ -139,6 +140,7 @@ export const Menu = () => {
             )}
 
             <Settings />
+            <Logout />
             {isEnabled('fullscreen') && <Fullscreen />}
             {isEnabled('collapse') && <Collapse toggleMenu={setIsMenuExpanded} />}
           </div>

@@ -32,12 +32,13 @@ export const Password = () => {
 
     // initial password change is always for "admin"
     const password = encrypt(values.password);
+    const oldPassword = encrypt(values.oldPassword);
 
     api
-      .changePassword('admin', password)
+      .changePassword('admin', password, oldPassword)
       .then((rsp: any) => {
         if (rsp.code !== 0) {
-          setMsg(t('auth.error'));
+          setMsg(rsp.code === -6 ? t('auth.wrongOldPassword') : t('auth.error'));
           return;
         }
 
@@ -70,6 +71,17 @@ export const Password = () => {
           initialValues={{ remember: true }}
           onFinish={changePassword}
         >
+          <Form.Item
+            name="oldPassword"
+            rules={[{ required: true, message: t('auth.noEmptyPassword'), min: 1 }]}
+          >
+            <Input
+              prefix={<LockOutlined />}
+              type="password"
+              placeholder={t('auth.placeholderOldPassword')}
+            />
+          </Form.Item>
+
           <Form.Item
             name="password"
             rules={[{ required: true, message: t('auth.noEmptyPassword'), min: 1 }]}

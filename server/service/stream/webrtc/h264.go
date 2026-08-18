@@ -2,6 +2,7 @@ package webrtc
 
 import (
 	"NanoKVM-Server/config"
+	"NanoKVM-Server/service/wsguard"
 	"NanoKVM-Server/utils"
 	"encoding/json"
 	"sync"
@@ -41,6 +42,10 @@ func Connect(c *gin.Context) {
 		_ = wsConn.Close()
 		log.Debugf("h264 websocket disconnected: %s", c.ClientIP())
 	}()
+
+	if unregister := wsguard.RegisterFromContext(c, wsConn); unregister != nil {
+		defer unregister()
+	}
 	log.Debugf("h264 websocket connected: %s", c.ClientIP())
 
 	var zeroTime time.Time

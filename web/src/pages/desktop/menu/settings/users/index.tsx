@@ -32,11 +32,15 @@ export const Users = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>('');
+  const [selfName, setSelfName] = useState<string>('');
   const [createForm] = Form.useForm();
   const [pwdForm] = Form.useForm();
 
   useEffect(() => {
     loadUsers();
+    api.getAccount().then((rsp: any) => {
+      if (rsp.code === 0) setSelfName(rsp.data.username);
+    });
   }, []);
 
   function loadUsers() {
@@ -111,8 +115,10 @@ export const Users = () => {
         message.error(t('settings.users.pwdMismatch'));
         return;
       }
+      const isSelf = selectedUser === selfName;
       const encPwd = CryptoJS.encrypt(values.password);
-      api.changeUserPassword(selectedUser, encPwd).then((rsp: any) => {
+      const encOld = isSelf ? CryptoJS.encrypt(values.oldPassword) : undefined;
+      api.changeUserPassword(selectedUser, encPwd, encOld).then((rsp: any) => {
         if (rsp.code === 0) {
           message.success(t('settings.users.pwdSuccess'));
           setPwdOpen(false);
@@ -128,7 +134,16 @@ export const Users = () => {
       title: t('settings.users.colUsername'),
       dataIndex: 'username',
       key: 'username',
-      render: (name: string) => <span className="font-mono">{name}</span>
+      render: (name: string) => (
+        <span className="flex items-center gap-1 font-mono">
+          {name}
+          {name === 'admin' && (
+            <Tooltip title={t('settings.users.ownerProtected')}>
+              <ShieldIcon size={12} className="text-amber-500" />
+            </Tooltip>
+          )}
+        </span>
+      )
     },
     {
       title: t('settings.users.colRole'),
@@ -139,6 +154,7 @@ export const Users = () => {
           value={role}
           size="small"
           style={{ width: 110 }}
+          disabled={record.username === 'admin'}
           onChange={(val) => handleRoleChange(record.username, val)}
           options={[
             { value: 'admin', label: <Tag color="red">admin</Tag> },
@@ -156,6 +172,7 @@ export const Users = () => {
         <Switch
           size="small"
           checked={enabled}
+          disabled={record.username === 'admin'}
           onChange={(val) => handleToggleEnabled(record.username, val)}
         />
       )
@@ -170,6 +187,7 @@ export const Users = () => {
               size="small"
               type="text"
               icon={<KeyRoundIcon size={14} />}
+              disabled={record.username === 'admin' && selfName !== 'admin'}
               onClick={() => openPwdModal(record.username)}
             />
           </Tooltip>
@@ -180,7 +198,13 @@ export const Users = () => {
             cancelText={t('settings.users.cancelBtn')}
           >
             <Tooltip title={t('settings.users.delete')}>
-              <Button size="small" type="text" danger icon={<Trash2Icon size={14} />} />
+              <Button
+                size="small"
+                type="text"
+                danger
+                disabled={record.username === 'admin'}
+                icon={<Trash2Icon size={14} />}
+              />
             </Tooltip>
           </Popconfirm>
         </div>
@@ -277,6 +301,15 @@ export const Users = () => {
         cancelText={t('settings.users.cancelBtn')}
       >
         <Form form={pwdForm} layout="vertical" className="mt-4">
+          {selectedUser === selfName && (
+            <Form.Item
+              name="oldPassword"
+              label={t('auth.placeholderOldPassword')}
+              rules={[{ required: true, message: t('settings.users.passwordRequired') }]}
+            >
+              <Input.Password autoComplete="current-password" />
+            </Form.Item>
+          )}
           <Form.Item
             name="password"
             label={t('settings.users.newPassword')}

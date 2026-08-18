@@ -78,6 +78,18 @@ func (s *Service) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Device-owner protection: the owner must always stay an enabled admin.
+	if IsDeviceOwner(username) {
+		if req.Role != "" && req.Role != "admin" {
+			rsp.ErrRsp(c, -6, "the device owner must remain an admin")
+			return
+		}
+		if req.Enabled != nil && !*req.Enabled {
+			rsp.ErrRsp(c, -7, "the device owner account cannot be disabled")
+			return
+		}
+	}
+
 	if req.Role != "" {
 		role := Role(req.Role)
 		if !IsValidRole(role) {
@@ -119,6 +131,12 @@ func (s *Service) DeleteUser(c *gin.Context) {
 		return
 	}
 
+	// Device-owner protection: the owner account cannot be deleted.
+	if IsDeviceOwner(username) {
+		rsp.ErrRsp(c, -4, "the device owner account cannot be deleted")
+		return
+	}
+
 	if err := DeleteAccount(username); err != nil {
 		rsp.ErrRsp(c, -3, err.Error())
 		return
@@ -149,9 +167,23 @@ func (s *Service) ChangeUserPassword(c *gin.Context) {
 		return
 	}
 
+	// Device-owner protection: only the owner may change the owner's password.
+	if IsDeviceOwner(username) && selfUsername.(string) != username {
+		rsp.ErrRsp(c, -8, "only the device owner can change this account")
+		return
+	}
+
 	if err := proto.ParseFormRequest(c, &req); err != nil {
 		rsp.ErrRsp(c, -3, "invalid parameters")
 		return
+	}
+
+	// Changing your own password (even as admin) requires the current password.
+	if username == selfUsername.(string) {
+		if !VerifyCurrentPassword(username, req.OldPassword) {
+			rsp.ErrRsp(c, -7, "current password is incorrect")
+			return
+		}
 	}
 
 	password, err := utils.DecodeDecrypt(req.Password)
@@ -169,6 +201,13 @@ func (s *Service) ChangeUserPassword(c *gin.Context) {
 	if err = UpdateAccountPassword(username, string(hashed)); err != nil {
 		rsp.ErrRsp(c, -6, err.Error())
 		return
+	}
+
+	// Keep the Linux root password in sync when the owner changes their own.
+	if IsDeviceOwner(username) {
+		if err = changeRootPassword(password); err != nil {
+			log.Warnf("failed to change root password: %s", err)
+		}
 	}
 
 	rsp.OkRsp(c)

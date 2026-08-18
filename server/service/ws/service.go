@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"NanoKVM-Server/service/wsguard"
 	"NanoKVM-Server/utils"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +29,10 @@ func (s *Service) Connect(c *gin.Context) {
 	}
 
 	log.Debug("websocket connected")
+
+	if unregister := wsguard.RegisterFromContext(c, ws); unregister != nil {
+		defer unregister()
+	}
 
 	client := NewClient(ws)
 

@@ -2,6 +2,7 @@ package direct
 
 import (
 	"NanoKVM-Server/service/stream"
+	"NanoKVM-Server/service/wsguard"
 	"NanoKVM-Server/utils"
 	"strconv"
 	"time"
@@ -26,6 +27,9 @@ func Connect(c *gin.Context) {
 	if err != nil {
 		log.Errorf("failed to upgrade to websocket: %s", err)
 		return
+	}
+	if unregister := wsguard.RegisterFromContext(c, ws); unregister != nil {
+		defer unregister()
 	}
 	client := newClient(ws)
 	if flowWindow, err := strconv.Atoi(c.Query("flow")); err == nil && flowWindow > 0 {

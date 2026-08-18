@@ -57,6 +57,7 @@ func applyLiveAccount(c *gin.Context, token *Token) bool {
 	if config.GetInstance().Authentication == "disable" {
 		c.Set("username", token.Username)
 		c.Set("role", token.Role)
+		c.Set("token_version", token.TokenVersion)
 		return true
 	}
 	if AccountResolver == nil {
@@ -71,6 +72,7 @@ func applyLiveAccount(c *gin.Context, token *Token) bool {
 	}
 	c.Set("username", token.Username)
 	c.Set("role", role)
+	c.Set("token_version", version)
 	return true
 }
 

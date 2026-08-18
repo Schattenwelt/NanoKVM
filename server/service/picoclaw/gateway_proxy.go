@@ -1,6 +1,7 @@
 package picoclaw
 
 import (
+	"NanoKVM-Server/service/wsguard"
 	"NanoKVM-Server/utils"
 	"fmt"
 	"net/http"
@@ -86,6 +87,10 @@ func (s *Service) ConnectGateway(c *gin.Context) {
 		GetSessionManager().SetState(sessionID, SessionStateClosed)
 		GetSessionManager().Remove(sessionID)
 		return
+	}
+
+	if unregister := wsguard.RegisterFromContext(c, downstream); unregister != nil {
+		defer unregister()
 	}
 
 	GetSessionManager().AttachUpstream(sessionID, upstream)

@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"NanoKVM-Server/service/wsguard"
 	"NanoKVM-Server/utils"
 	"encoding/json"
 	"os"
@@ -38,6 +39,10 @@ func (s *Service) Terminal(c *gin.Context) {
 	defer func() {
 		_ = ws.Close()
 	}()
+
+	if unregister := wsguard.RegisterFromContext(c, ws); unregister != nil {
+		defer unregister()
+	}
 
 	cmd := exec.Command("/bin/sh")
 	ptmx, err := pty.Start(cmd)

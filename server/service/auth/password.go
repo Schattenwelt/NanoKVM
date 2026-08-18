@@ -40,6 +40,21 @@ func (s *Service) ChangePassword(c *gin.Context) {
 		return
 	}
 
+	// Device-owner protection: only the owner may change the owner's password,
+	// because it is synchronised to the Linux root/SSH password.
+	if IsDeviceOwner(req.Username) && selfUsername.(string) != req.Username {
+		rsp.ErrRsp(c, -7, "only the device owner can change this account")
+		return
+	}
+
+	// Self-service change: confirm the current password first.
+	if req.Username == selfUsername.(string) {
+		if !VerifyCurrentPassword(req.Username, req.OldPassword) {
+			rsp.ErrRsp(c, -6, "current password is incorrect")
+			return
+		}
+	}
+
 	password, err := utils.DecodeDecrypt(req.Password)
 	if err != nil || password == "" {
 		rsp.ErrRsp(c, -3, "invalid password")
@@ -57,8 +72,9 @@ func (s *Service) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	// Only change the root system password when the admin changes their own password.
-	if req.Username == "admin" {
+	// Sync the Linux root password. The guard above guarantees this only runs
+	// when the device owner changes their own password.
+	if IsDeviceOwner(req.Username) {
 		if err = changeRootPassword(password); err != nil {
 			log.Warnf("failed to change root password: %s", err)
 		}

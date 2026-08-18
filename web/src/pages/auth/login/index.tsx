@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import * as api from '@/api/auth.ts';
-import { existToken, setToken } from '@/lib/cookie.ts';
+import { existToken } from '@/lib/cookie.ts';
 import { encrypt } from '@/lib/encrypt.ts';
 import { Head } from '@/components/head.tsx';
 
@@ -51,7 +51,6 @@ export const Login = (): ReactElement => {
         }
 
         setMsg('');
-        setToken(rsp.data.token);
 
         navigate('/', { replace: true });
         window.location.reload();

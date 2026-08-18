@@ -1,23 +1,16 @@
 import Cookies from 'js-cookie';
 
-const COOKIE_TOKEN_KEY = 'nano-kvm-token';
+// The JWT itself now lives in an HttpOnly cookie set by the server and is NOT
+// readable from JavaScript, so it cannot be stolen via XSS. This non-secret
+// flag cookie only signals that a session exists so the UI can gate routing.
+const AUTH_FLAG_KEY = 'nano-kvm-auth';
 
 export function existToken() {
-  const token = Cookies.get(COOKIE_TOKEN_KEY);
-  return !!token;
-}
-
-export function getToken() {
-  const token = Cookies.get(COOKIE_TOKEN_KEY);
-  if (!token) return null;
-
-  return token;
-}
-
-export function setToken(token: string) {
-  Cookies.set(COOKIE_TOKEN_KEY, token, { expires: 30 });
+  return !!Cookies.get(AUTH_FLAG_KEY);
 }
 
 export function removeToken() {
-  Cookies.remove(COOKIE_TOKEN_KEY);
+  // Clear the client-visible flag. The HttpOnly token cookie is cleared by the
+  // server on logout; any stale token is rejected on the next request anyway.
+  Cookies.remove(AUTH_FLAG_KEY);
 }

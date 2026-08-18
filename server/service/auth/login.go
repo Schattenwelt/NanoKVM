@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"net/http"
+	"strings"
 	"time"
 
 	"NanoKVM-Server/config"
@@ -11,13 +13,49 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	authCookieName = "nano-kvm-token"
+	authFlagName   = "nano-kvm-auth"
+)
+
+// requestIsTLS reports whether the request reached us over HTTPS, directly or
+// via a TLS-terminating reverse proxy. The Secure cookie flag is only set when
+// true, otherwise a plain-HTTP LAN client would never receive the cookie.
+func requestIsTLS(c *gin.Context) bool {
+	if c.Request.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+}
+
+// setAuthCookies stores the JWT in an HttpOnly, SameSite=Strict cookie (Secure
+// under TLS) so it is never exposed to JavaScript / XSS. A second, non-secret
+// flag cookie lets the frontend know a session exists without reading the token.
+func setAuthCookies(c *gin.Context, token string) {
+	maxAge := int(config.GetInstance().JWT.RefreshTokenDuration)
+	secure := requestIsTLS(c)
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(authCookieName, token, maxAge, "/", "", secure, true)
+	c.SetCookie(authFlagName, "1", maxAge, "/", "", secure, false)
+}
+
+// clearAuthCookies removes both cookies on logout.
+func clearAuthCookies(c *gin.Context) {
+	secure := requestIsTLS(c)
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(authCookieName, "", -1, "/", "", secure, true)
+	c.SetCookie(authFlagName, "", -1, "/", "", secure, false)
+}
+
 func (s *Service) Login(c *gin.Context) {
 	var req proto.LoginReq
 	var rsp proto.Response
 
 	conf := config.GetInstance()
 	if conf.Authentication == "disable" {
-		rsp.OkRspWithData(c, &proto.LoginRsp{Token: "disabled"})
+		c.SetSameSite(http.SameSiteStrictMode)
+		c.SetCookie(authFlagName, "1", int(conf.JWT.RefreshTokenDuration), "/", "", requestIsTLS(c), false)
+		rsp.OkRspWithData(c, &proto.LoginRsp{Token: ""})
 		return
 	}
 
@@ -56,7 +94,8 @@ func (s *Service) Login(c *gin.Context) {
 		return
 	}
 
-	rsp.OkRspWithData(c, &proto.LoginRsp{Token: token})
+	setAuthCookies(c, token)
+	rsp.OkRspWithData(c, &proto.LoginRsp{Token: ""})
 	c.Set("audit_user", account.Username)
 	c.Set("audit_role", string(account.Role))
 	c.Set("audit_result", "success")
@@ -74,6 +113,7 @@ func (s *Service) Logout(c *gin.Context) {
 			}
 		}
 	}
+	clearAuthCookies(c)
 	rsp.OkRsp(c)
 }
 

@@ -13,8 +13,8 @@ export function getAccount() {
   return http.get('/api/auth/account');
 }
 
-export function changePassword(username: string, password: string) {
-  const data = { username, password };
+export function changePassword(username: string, password: string, oldPassword?: string) {
+  const data = { username, password, oldPassword };
   return http.post('/api/auth/password', data);
 }
 
@@ -39,8 +39,8 @@ export function deleteUser(username: string) {
   return http.delete(`/api/auth/users/${username}`);
 }
 
-export function changeUserPassword(username: string, password: string) {
-  return http.post(`/api/auth/users/${username}/password`, { username, password });
+export function changeUserPassword(username: string, password: string, oldPassword?: string) {
+  return http.post(`/api/auth/users/${username}/password`, { username, password, oldPassword });
 }
 
 // Audit log (admin only): who did what

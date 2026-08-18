@@ -278,6 +278,32 @@ func CompareAccount(username, plainPassword string) (*Account, bool) {
 	return account, true
 }
 
+// DeviceOwner is the account whose password is synchronised to the Linux root
+// user (and therefore SSH). It is the device owner: only the owner itself may
+// change its password, role, or enabled state, or delete it. Otherwise a second
+// admin could change this account and hijack root.
+const DeviceOwner = "admin"
+
+// IsDeviceOwner reports whether username is the protected device-owner account.
+func IsDeviceOwner(username string) bool {
+	return username == DeviceOwner
+}
+
+// VerifyCurrentPassword checks an encrypted candidate password against the
+// stored hash for a user. Used to confirm identity on self-service password
+// changes so a hijacked or unattended session cannot silently change it.
+func VerifyCurrentPassword(username, encrypted string) bool {
+	account, err := GetAccountByUsername(username)
+	if err != nil || account == nil {
+		return false
+	}
+	decoded, err := utils.DecodeDecrypt(encrypted)
+	if err != nil || decoded == "" {
+		return false
+	}
+	return bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(decoded)) == nil
+}
+
 // IsValidRole checks whether a role string is valid.
 func IsValidRole(r Role) bool {
 	return r == RoleAdmin || r == RoleOperator || r == RoleViewer
